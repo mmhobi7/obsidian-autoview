@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-sample-plugin",
-	"name": "Sample Plugin",
+	"id": "obsidian-autoview",
+	"name": "AutoView",
 	"version": "1.0.1",
 	"minAppVersion": "0.9.12",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md/about",
-	"isDesktopOnly": false
+	"description": "This plugin automatically switches the view from edit to preview after a timeout. Then, upon keystroke, switches back to edit mode. This is to allow seemless transition in a sort of WYSIWYG. Right now the first keystroke is not placed into the text file, but that is to be amended. ",
+	"author": "mmhobi7",
+	"authorUrl": "https://github.com/mmhobi7/obsidian-autoview",
+	"isDesktopOnly": true
 }
