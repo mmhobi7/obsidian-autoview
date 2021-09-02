@@ -1,5 +1,4 @@
-import {Console} from 'console';
-import {App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf} from 'obsidian';
+import {App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting} from 'obsidian';
 
 interface MyPluginSettings {
   timoutduration: number;
@@ -30,7 +29,7 @@ export default class MyPlugin extends Plugin {
   lastTime: number;
 
   async onload() {
-    console.log('loading plugin');
+    console.log('loading plugin autoview');
     this.lastTime = 1;
     this.db = {}
 
@@ -63,79 +62,20 @@ export default class MyPlugin extends Plugin {
       console.log('codemirror', cm);
     });
 
-    // this.registerEvent(
-    //     this.app.workspace.on(
-    //         'file-open', (file) => this.restoreEphemeralState()),
-    // );
-
-    // this.registerEvent(
-    // 	this.app.vault.on('rename', (file, oldPath) => this.renameFile(file,
-    // oldPath)),
-    // );
-
-    // this.registerEvent(
-    // 	this.app.vault.on('delete', (file) => this.deleteFile(file)),
-    // );
-
-    // taodo: replace by scroll and mouse cursor move events
-    // this.registerInterval(
-    //     window.setInterval(() => this.checkEphemeralStateChanged(), 100));
-
-    // this.restoreEphemeralState();
-
     this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
       // https://github.com/obsidianmd/obsidian-releases/pull/433
       console.log('keydown', evt);
-      // var markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
       var markdownLeaves2 =
           this.app.workspace.getActiveViewOfType(MarkdownView);
-      console.log(markdownLeaves2);
       if (markdownLeaves2.getMode() == 'preview') {
         var curState = markdownLeaves2.getState();
-        console.log(curState);
         curState.mode = 'source';
         markdownLeaves2.setState(curState, theresult);
         this.restoreEphemeralState();
       }
       this.lastTime++;
       this.backtopreview(this.lastTime, markdownLeaves2);
-      // for (var i = 0; i < markdownLeaves.length; i++) {
-      //   var markdownLeave = markdownLeaves[i];
-      //   console.log('brubnmnbvbm', i);
-      //   if (markdownLeave.view){
-      // 	  var currState = markdownLeave.getViewState();
-      // 	  currState.state.mode = "source";
-      // 	  markdownLeave.setViewState(currState);
-      // 	  this.lastTime++;
-      // 	  console.log(currState);
-      // 	  console.log("===========");
-      // 	  this.backtopreview(this.lastTime, markdownLeave);
-      //   }
-      // }
     });
-
-
-    // 	this.registerEvent(
-    // 		this.app.workspace.on("layout-change",
-    // this.markupPreview.bind(this))
-    // 	);
-
-    // 	this.registerInterval(window.setInterval(() =>
-    // console.log('setInterval'), 5 * 60 * 1000));
-    // }
-    //     markupPreview() {
-    //       var markdownLeaves =
-    //       this.app.workspace.getLeavesOfType('markdown'); for (var i = 0; i <
-    //       markdownLeaves.length; i++) {
-    //         var markdownLeave = markdownLeaves[i];
-    // 		console.log('bruhruh', i);
-    //         if (markdownLeave.view){
-    // 			console.log('viewstate', markdownLeave.view.getState());
-    //           if (markdownLeave.view.getMode() == 'preview') {
-    //             console.log(markdownLeave.view);
-    //           }
-    //         }
-    //       }
   }
 
   checkEphemeralStateChanged() {
@@ -185,7 +125,6 @@ export default class MyPlugin extends Plugin {
   }
 
   async saveEphemeralState(st: EphemeralState) {
-    console.log('saved state');
     let fileName =
         this.app.workspace.getActiveFile()?.path;  // do not save if file
                                                    // changed and was not loaded
@@ -221,15 +160,12 @@ export default class MyPlugin extends Plugin {
     await new Promise(resolve => setTimeout(resolve, this.settings.timoutduration * 1000));
     if (a == this.lastTime) {
       // if(markdownLeave.getMode() == "source"){
-      //   this.writeDb(this.db//TODO
       this.checkEphemeralStateChanged();
       var curState = markdownLeave.getState();
-      console.log(curState);
       curState.mode = 'preview';
       markdownLeave.setState(curState, theresult);
       // }
     }
-    console.log(this.lastTime + '  ' + a);
   }
 
   onunload() {
@@ -239,24 +175,19 @@ export default class MyPlugin extends Plugin {
   setEphemeralState(state: EphemeralState) {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
-    console.log('cursor state', state.cursor);
+    if (view && state.scroll) {
+      view.setEphemeralState(state);
+      view.previewMode.applyScroll(state.scroll);
+      view.sourceMode.applyScroll(state.scroll);
+    }
     if (state.cursor) {
       let editor = this.getEditor();
       console.log('editor state', editor);
       if (editor) {
-        // var yeet= editor.setSelection(
-        //     state.cursor.from, state.cursor.to, {scroll: true});
-        editor.setCursor(state.cursor.from);
+        editor.setSelection(state.cursor.from, state.cursor.to, {scroll: false});
         editor.focus();
       }
     }
-
-    // TODO:
-    // if (view && state.scroll) {
-    //   view.setEphemeralState(state);
-    //   // view.previewMode.applyScroll(state.scroll);
-    //   // view.sourceMode.applyScroll(state.scroll);
-    // }
   }
 
   async loadSettings() {
@@ -333,7 +264,7 @@ class SampleSettingTab extends PluginSettingTab {
             'The amount of time in seconds that the plugin waits after the last keystroke before switching over to preview mode. ')
         .addText(
             text => text.setPlaceholder('5')
-            .setValue('')
+            .setValue(this.plugin.settings.timoutduration.toString())
             .onChange(
                 async (value) => {
                   this.plugin.settings.timoutduration = Number(value);
