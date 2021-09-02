@@ -2,10 +2,12 @@ import {App, MarkdownView, Plugin, PluginSettingTab, Setting} from 'obsidian';
 
 interface MyPluginSettings {
   timoutduration: number;
+  rememberscroll: boolean;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-  timoutduration: 10
+  timoutduration: 10,
+  rememberscroll: true
 }
 
 // https://raw.githubusercontent.com/derwish-pro/obsidian-remember-cursor-position/master/main.ts
@@ -39,20 +41,26 @@ export default class MyPlugin extends Plugin {
       console.log('codemirror', cm);
     });
 
-    this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
-      // https://github.com/obsidianmd/obsidian-releases/pull/433
-      console.log('keydown', evt);
-      var markdownLeaves2 =
-          this.app.workspace.getActiveViewOfType(MarkdownView);
-      if (markdownLeaves2.getMode() == 'preview') {
-        var curState = markdownLeaves2.getState();
-        curState.mode = 'source';
-        markdownLeaves2.setState(curState, theresult);
-        this.restoreEphemeralState();
-      }
-      this.lastTime++;
-      this.backtopreview(this.lastTime, markdownLeaves2);
-    });
+    this.registerDomEvent(
+        document, 'keydown',
+        (evt: KeyboardEvent) => this.modeHandler(null, evt));
+
+    this.registerDomEvent(
+        document, 'mousedown',
+        this.modeHandler);  // TODO: find better way to find interaction with
+                            // editor
+  }
+
+  modeHandler(mouseevt?: MouseEvent, keyevt?: KeyboardEvent) {
+    var markdownLeaves2 = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (markdownLeaves2.getMode() == 'preview') {
+      var curState = markdownLeaves2.getState();
+      curState.mode = 'source';
+      markdownLeaves2.setState(curState, theresult);
+      this.restoreEphemeralState();
+    }
+    this.lastTime++;
+    this.backtopreview(this.lastTime, markdownLeaves2);
   }
 
   checkEphemeralStateChanged() {
@@ -97,21 +105,19 @@ export default class MyPlugin extends Plugin {
   }
 
   async saveEphemeralState(st: EphemeralState) {
-    let fileName =
-        this.app.workspace.getActiveFile()?.path;  // do not save if file
-                                                   // changed and was not loaded
+    let fileName = this.app.workspace.getActiveFile()?.path;
     this.db[fileName] = st;
   }
 
   async backtopreview(a: number, markdownLeave: MarkdownView) {
     await this.delay(this.settings.timoutduration * 1000);
     if (a == this.lastTime) {
-      // if(markdownLeave.getMode() == "source"){
-      this.checkEphemeralStateChanged();
-      var curState = markdownLeave.getState();
-      curState.mode = 'preview';
-      markdownLeave.setState(curState, theresult);
-      // }
+      if (markdownLeave.getMode() == 'source') {
+        this.checkEphemeralStateChanged();
+        var curState = markdownLeave.getState();
+        curState.mode = 'preview';
+        markdownLeave.setState(curState, theresult);
+      }
     }
   }
 
@@ -124,18 +130,24 @@ export default class MyPlugin extends Plugin {
 
     if (state.cursor) {
       let editor = this.getEditor();
-      console.log('editor state', editor);
-      if (editor) {
-        editor.setSelection(
-            state.cursor.from, state.cursor.to, {scroll: false});
-        editor.focus();
-      }
-      if (view && state.scroll) {
-        view.sourceMode.applyScroll(state.scroll);
+      if (this.settings.rememberscroll) {
+        if (editor) {
+          editor.setSelection(
+              state.cursor.from, state.cursor.to, {scroll: false});
+          editor.focus();
+        }
+        if (view && state.scroll) {
+          view.sourceMode.applyScroll(state.scroll);
+        }
+      } else {
+        if (editor) {
+          editor.setSelection(
+              state.cursor.from, state.cursor.to, {scroll: true});
+          editor.focus();
+        }
       }
     }
   }
-
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
@@ -203,6 +215,17 @@ class SampleSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                       }
                     }));
+
+    new Setting(containerEl)
+        .setName('Scroll back to previous editing location')
+        .setDesc(
+            'Should the editor scroll back to it\'s previous location when switching from edit to preview mode? ')
+        .addToggle(
+            toggle => toggle.setValue(this.plugin.settings.rememberscroll)
+                          .onChange(async (value) => {
+                            this.plugin.settings.rememberscroll = value;
+                            await this.plugin.saveSettings();
+                          }));
   }
 }
 function theresult(curState: any, tresult: any) {
