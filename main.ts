@@ -1,11 +1,11 @@
-import {App, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting} from 'obsidian';
+import {App, MarkdownView, Plugin, PluginSettingTab, Setting} from 'obsidian';
 
 interface MyPluginSettings {
   timoutduration: number;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-  timoutduration: 5
+  timoutduration: 10
 }
 
 // https://raw.githubusercontent.com/derwish-pro/obsidian-remember-cursor-position/master/main.ts
@@ -24,37 +24,14 @@ interface EphemeralState {
 export default class MyPlugin extends Plugin {
   settings: MyPluginSettings;
   db: {[file_path: string]: EphemeralState;};
-  lastEphemeralState: EphemeralState;
-  lastLoadedFileName: string;
   lastTime: number;
 
   async onload() {
     console.log('loading plugin autoview');
     this.lastTime = 1;
-    this.db = {}
+    this.db = {};
 
-              await this.loadSettings();
-
-    this.addRibbonIcon('dice', 'AutoView', () => {
-      new Notice('This is a notice!');
-    });
-
-    this.addStatusBarItem().setText('Status Bar Text');
-
-    this.addCommand({
-      id: 'open-sample-modal',
-      name: 'Open Sample Modal',
-      checkCallback: (checking: boolean) => {
-        let leaf = this.app.workspace.activeLeaf;
-        if (leaf) {
-          if (!checking) {
-            new SampleModal(this.app).open();
-          }
-          return true;
-        }
-        return false;
-      }
-    });
+    await this.loadSettings();
 
     this.addSettingTab(new SampleSettingTab(this.app, this));
 
@@ -86,12 +63,7 @@ export default class MyPlugin extends Plugin {
 
     let st = this.getEphemeralState();
 
-    if (!this.lastEphemeralState) this.lastEphemeralState = st;
-
-    // if (!this.isEphemeralStatesEquals(st, this.lastEphemeralState)) {
     this.saveEphemeralState(st);
-    this.lastEphemeralState = st;
-    // }
   }
 
   getEphemeralState(): EphemeralState {
@@ -131,33 +103,8 @@ export default class MyPlugin extends Plugin {
     this.db[fileName] = st;
   }
 
-
-  isEphemeralStatesEquals(state1: EphemeralState, state2: EphemeralState):
-      boolean {
-    if (state1.cursor && !state2.cursor) return false;
-
-    if (!state1.cursor && state2.cursor) return false;
-
-    if (state1.cursor) {
-      if (state1.cursor.from.ch != state2.cursor.from.ch) return false;
-      if (state1.cursor.from.line != state2.cursor.from.line) return false;
-      if (state1.cursor.to.ch != state2.cursor.to.ch) return false;
-      if (state1.cursor.to.line != state2.cursor.to.line) return false;
-    }
-
-    if (state1.scroll && !state2.scroll) return false;
-
-    if (!state1.scroll && state2.scroll) return false;
-
-    if (state1.scroll) {
-      if (state1.scroll != state2.scroll) return false;
-    }
-
-    return true;
-  }
-
   async backtopreview(a: number, markdownLeave: MarkdownView) {
-    await new Promise(resolve => setTimeout(resolve, this.settings.timoutduration * 1000));
+    await this.delay(this.settings.timoutduration * 1000);
     if (a == this.lastTime) {
       // if(markdownLeave.getMode() == "source"){
       this.checkEphemeralStateChanged();
@@ -175,17 +122,16 @@ export default class MyPlugin extends Plugin {
   setEphemeralState(state: EphemeralState) {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
-    if (view && state.scroll) {
-      view.setEphemeralState(state);
-      view.previewMode.applyScroll(state.scroll);
-      view.sourceMode.applyScroll(state.scroll);
-    }
     if (state.cursor) {
       let editor = this.getEditor();
       console.log('editor state', editor);
       if (editor) {
-        editor.setSelection(state.cursor.from, state.cursor.to, {scroll: false});
+        editor.setSelection(
+            state.cursor.from, state.cursor.to, {scroll: false});
         editor.focus();
+      }
+      if (view && state.scroll) {
+        view.sourceMode.applyScroll(state.scroll);
       }
     }
   }
@@ -199,14 +145,13 @@ export default class MyPlugin extends Plugin {
   }
 
   async delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    if (ms > 10) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
   }
 
   async restoreEphemeralState() {
     let fileName = this.app.workspace.getActiveFile()?.path;
-
-    this.lastEphemeralState = {};
-    this.lastLoadedFileName = fileName;
 
     if (fileName) {
       let st = this.db[fileName];
@@ -221,25 +166,7 @@ export default class MyPlugin extends Plugin {
         }
         this.setEphemeralState(st);
       }
-      this.lastEphemeralState = st;
     }
-  }
-}
-
-
-class SampleModal extends Modal {
-  constructor(app: App) {
-    super(app);
-  }
-
-  onOpen() {
-    let {contentEl} = this;
-    contentEl.setText('Woah!');
-  }
-
-  onClose() {
-    let {contentEl} = this;
-    contentEl.empty();
   }
 }
 
@@ -263,15 +190,21 @@ class SampleSettingTab extends PluginSettingTab {
         .setDesc(
             'The amount of time in seconds that the plugin waits after the last keystroke before switching over to preview mode. ')
         .addText(
-            text => text.setPlaceholder('5')
-            .setValue(this.plugin.settings.timoutduration.toString())
-            .onChange(
-                async (value) => {
-                  this.plugin.settings.timoutduration = Number(value);
-                  await this.plugin.saveSettings();
-                }));
+            text =>
+                text.setPlaceholder('10')
+                    .setValue(this.plugin.settings.timoutduration.toString())
+                    .onChange(async (value) => {
+                      if (Number(value) > 0) {
+                        this.plugin.settings.timoutduration = Number(value);
+                        await this.plugin.saveSettings();
+                      } else {
+                        this.plugin.settings.timoutduration = 10;
+                        text.setValue('');
+                        await this.plugin.saveSettings();
+                      }
+                    }));
   }
 }
 function theresult(curState: any, tresult: any) {
-  console.log(tresult);
+  // console.log(tresult);
 }
