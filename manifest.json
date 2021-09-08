@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-autoview",
 	"name": "AutoView",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "0.9.12",
 	"description": "This plugin automatically switches the view from edit to preview after a timeout. Then, upon keystroke, switches back to edit mode. This is to allow seemless transition in a sort of WYSIWYG. ",
 	"author": "mmhobi7",
