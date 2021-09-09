@@ -4,9 +4,16 @@ This is a plugin for Obsidian (https://obsidian.md).
 
 This plugin will auto-switch the active window to edit mode when a keystroke is detected, and then switch back to preview mode a delay after the last keystroke is detected. This quick switching allows for a kind of WYSIWYG.
 
-## Installation
+## Local Installation
+The codebase is written in TypeScript and uses `rollup` / `node` for compilation; for a first time set up, all you
+should need to do is pull, install, and build:
 
-1. Install the plugin via the community plugins settings tab in Obsidian.
+```console
+foo@bar:~$ git clone https://github.com/mmhobi7/obsidian-autoview.git
+foo@bar:~$ cd obsidian-autoview
+foo@bar:~/obsidian-autoview$ npm install
+foo@bar:~/obsidian-autoview$ npm run dev
+```
 
 ## Settings
 
