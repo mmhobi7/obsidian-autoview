@@ -3,11 +3,17 @@ import {App, MarkdownView, Plugin, PluginSettingTab, Setting} from 'obsidian';
 interface MyPluginSettings {
   timoutduration: number;
   rememberscroll: boolean;
+  ignorectrlaltshift: boolean;
+  ignorenonalpha: boolean;
+  onmouseclick: boolean;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
   timoutduration: 10,
-  rememberscroll: true
+  rememberscroll: true,
+  ignorectrlaltshift: true,
+  ignorenonalpha: false,
+  onmouseclick: false
 }
 
 // https://raw.githubusercontent.com/derwish-pro/obsidian-remember-cursor-position/master/main.ts
@@ -42,16 +48,39 @@ export default class MyPlugin extends Plugin {
     });
 
     this.registerDomEvent(
-        document, 'keydown',
-        (evt: KeyboardEvent) => this.modeHandler(null, evt));
+        document, 'keydown', (evt: KeyboardEvent) => this.onKeyboardEvent(evt));
 
     this.registerDomEvent(
         document, 'mousedown',
-        this.modeHandler);  // TODO: find better way to find interaction with
-                            // editor
+        this.onMouseEvent);  // TODO: find better way to find interaction with
+                             // editor
   }
 
-  modeHandler(mouseevt?: MouseEvent, keyevt?: KeyboardEvent) {
+  onMouseEvent(evt: MouseEvent) {
+    if (!this.settings.onmouseclick) {
+      return;
+    }
+    this.modeHandler();
+  }
+
+  onKeyboardEvent(evt: KeyboardEvent) {
+    if (this.settings.ignorectrlaltshift) {
+      if (evt.key === 'Control' || evt.key === 'Alt' || evt.key === 'Shift' ||
+          evt.key === 'Meta') {
+        return;
+      }
+    }
+    if (this.settings.ignorenonalpha) {
+      if (!((evt.key >= 'a' && evt.key <= 'z') ||
+            (evt.key >= '0' && evt.key <= '9') ||
+            (evt.key >= 'A' && evt.key <= 'Z'))) {
+        return;
+      }
+    }
+    this.modeHandler();
+  }
+
+  modeHandler() {
     var markdownLeaves2 = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (markdownLeaves2.getMode() == 'preview') {
       var curState = markdownLeaves2.getState();
@@ -224,6 +253,30 @@ class SampleSettingTab extends PluginSettingTab {
             toggle => toggle.setValue(this.plugin.settings.rememberscroll)
                           .onChange(async (value) => {
                             this.plugin.settings.rememberscroll = value;
+                            await this.plugin.saveSettings();
+                          }));
+    new Setting(containerEl)
+        .setName('Ignore ctrl, shift, alt keys')
+        .addToggle(
+            toggle => toggle.setValue(this.plugin.settings.ignorectrlaltshift)
+                          .onChange(async (value) => {
+                            this.plugin.settings.ignorectrlaltshift = value;
+                            await this.plugin.saveSettings();
+                          }));
+    new Setting(containerEl)
+        .setName('Ignore all keyboard input except alphabet')
+        .addToggle(
+            toggle => toggle.setValue(this.plugin.settings.ignorenonalpha)
+                          .onChange(async (value) => {
+                            this.plugin.settings.ignorenonalpha = value;
+                            await this.plugin.saveSettings();
+                          }));
+    new Setting(containerEl)
+        .setName('Ignore all keyboard input except alphabet')
+        .addToggle(
+            toggle => toggle.setValue(this.plugin.settings.onmouseclick)
+                          .onChange(async (value) => {
+                            this.plugin.settings.onmouseclick = value;
                             await this.plugin.saveSettings();
                           }));
   }
